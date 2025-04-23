@@ -25,7 +25,6 @@ public class JwtServiceImpl implements JwtService {
     @Value("${jwt.expiration}")
     private long jwtExpiration;
 
-
     @Override
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -68,6 +67,7 @@ public class JwtServiceImpl implements JwtService {
 
         if (userDetails instanceof User user) {
             claims.put("role", user.getRole().name()); // Doit stocker "ADMIN" en majuscules
+            claims.put("roles", Collections.singletonList(user.getRole().name())); // If you store multiple roles, this is the place
             return buildToken(claims, user.getEmail()); // Utilisez l'email comme sujet
         }
         return buildToken(new HashMap<>(), "");

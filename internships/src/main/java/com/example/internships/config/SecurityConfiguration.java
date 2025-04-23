@@ -41,10 +41,12 @@ public class SecurityConfiguration  {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Endpoints publics
-                        .requestMatchers("/", "/error", "/api/v1/auth/**","/api/v1/auth/signup","/api/v1/auth/signin",
+                        .requestMatchers("/", "/error","/api/v1/auth/signup","/api/v1/auth/signin",
                                 "/v3/api-docs/**", "/swagger-ui/**").permitAll()
 
                         // Gestion des packs
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
+
                         .requestMatchers(HttpMethod.GET, "/api/v1/packs/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_ENTREPRISE", "ROLE_ETUDIANT")
                         .requestMatchers(HttpMethod.POST, "/api/v1/packs/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/packs/**").hasAuthority("ROLE_ADMIN")
@@ -88,4 +90,5 @@ public class SecurityConfiguration  {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
 }

@@ -9,10 +9,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Méthode personnalisée pour vérifier si l'email existe déjà
     boolean existsByEmail(String email);
 
-    // Méthode personnalisée pour trouver un utilisateur par son email
-    Optional<User> findByUsername(String username);
-
-    // Méthode pour trouver des utilisateurs par leur rôle
     List<User> findByRole(User.Role role);
     Optional<User> findByEmail(String email);
 }

@@ -1,16 +1,15 @@
 package com.example.internships.dto.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
+@Setter
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class SigninRequest {
+    private String email;
+    @Getter
+    private String password;
 
-    private String email;   // Email de l'utilisateur
-    private String password; // Mot de passe
 }

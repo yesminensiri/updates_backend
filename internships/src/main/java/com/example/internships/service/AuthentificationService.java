@@ -3,6 +3,7 @@ import com.example.internships.dto.request.SigninRequest;  // Corrige ici l'orth
 
 import com.example.internships.dto.request.SignUpRequest;
 import com.example.internships.dto.response.JwtAuthenticationResponse;
+import com.example.internships.mapper.UserDTO;
 
 public interface AuthentificationService {
 
@@ -10,5 +11,7 @@ public interface AuthentificationService {
     JwtAuthenticationResponse signUp(SignUpRequest request);
 
     // Méthode de connexion (SignIn)
-    JwtAuthenticationResponse signIn(SigninRequest request);  // Corrige ici aussi l'orthographe
+    JwtAuthenticationResponse signIn(SigninRequest request);
+
+    UserDTO getCurrentUserDetails(String email);
 }

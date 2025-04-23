@@ -1,14 +1,23 @@
 package com.example.internships.controller;
 
+import com.example.internships.dao.entity.User;
+import com.example.internships.dao.repository.UserRepository;
 import com.example.internships.dto.request.SignUpRequest;
 import com.example.internships.dto.request.SigninRequest;
 import com.example.internships.dto.response.JwtAuthenticationResponse;
 import com.example.internships.service.AuthentificationService;
-import jakarta.servlet.http.HttpServletResponse;
+import com.example.internships.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-import org.json.JSONObject;
+
+import java.util.Map;
+import java.util.HashMap;
+
 
 @CrossOrigin(origins = "http://localhost:4200")
 @RestController
@@ -17,6 +26,9 @@ import org.json.JSONObject;
 public class AuthenticationController {
 
     private final AuthentificationService authenticationService;
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+    private final UserRepository userRepository;
 
     @PostMapping("/signup")
     public ResponseEntity<JwtAuthenticationResponse> signup(@RequestBody SignUpRequest request) {
@@ -24,21 +36,27 @@ public class AuthenticationController {
     }
 
     @PostMapping("/signin")
-    public ResponseEntity<JwtAuthenticationResponse> signin(@RequestBody SigninRequest request, HttpServletResponse response) {
-        JwtAuthenticationResponse jwtResponse = authenticationService.signIn(request);
+    public ResponseEntity<?> signIn(@RequestBody SigninRequest request) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        );
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String token = jwtService.generateToken(userDetails);
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (jwtResponse != null && jwtResponse.getToken() != null) {
-            response.setHeader("Access-Control-Expose-Headers", "Authorization");
-            response.setHeader("Access-Control-Allow-Headers", "Authorization, X-Pingother, Origin, X-Requested-with, Content-Type, Accept, X-Custom-header");
-            response.setHeader("Authorization", "Bearer " + jwtResponse.getToken());
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", token);
+        response.put("role", user.getRole().name()); // Assuming you have a role in the user entity
+        response.put("userID", user.getId());
 
-            JSONObject responseBody = new JSONObject();
-            responseBody.put("userID", jwtResponse.getUserId());
-            responseBody.put("role", jwtResponse.getRole());
-
-            return ResponseEntity.ok(jwtResponse);
-        } else {
-            return ResponseEntity.badRequest().body(jwtResponse);
-        }
+        return ResponseEntity.ok(response);
     }
-}
+
+    }
+
+
+
+
+
+

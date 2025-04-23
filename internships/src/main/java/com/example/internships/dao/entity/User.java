@@ -19,16 +19,14 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Setter
-    private String username;
-    @Getter
-    private String firstName;   // Added
-    private String lastName;    // Added
 
+    @Setter
+    private String lastName;
     @Setter
     @Getter
     @Column(unique = true, nullable = false)
     private String email;
+
     @Setter
     private String password;
 
@@ -37,6 +35,45 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @Setter
+    @Getter
+    private String birthDate; // Added field
+
+    @Setter
+    @Getter
+    private String sex; // Added field
+
+    @Setter
+    @Getter
+    private String university; // Added field
+
+    @Setter
+    @Getter
+    private String domain; // Added field
+
+    @Setter
+    @Getter
+    private String diplomas; // Added field
+
+    @Setter
+    @Getter
+    private String address; // Added field
+
+    @Setter
+    @Getter
+    private String phoneNumber; // Added field
+
+    @Setter
+    @Getter
+    private String secondaryEmail; // Added field
+
+    @Setter
+    @Getter
+    private String cv; // Added field
+
+    @Setter
+    @Getter
+    private String profilePicture; // Added field
 
     @Setter
     @Getter
@@ -63,13 +100,16 @@ public class User implements UserDetails {
         return password;
     }
 
-    // === Implémentation de UserDetails ===
+
+    public void setUsername(String username) {
+        this.email = username;  // Since getUsername() uses email, set it here
+    }
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.getAuthority()));
     }
-
 
     @Override
     public boolean isAccountNonExpired() {
