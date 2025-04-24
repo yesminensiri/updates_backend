@@ -2,6 +2,7 @@ package com.example.internships.config;
 
 import com.example.internships.service.JwtService;
 import com.example.internships.service.UserService;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,8 +15,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.security.core.userdetails.UsernameNotFoundException; // Import ajouté
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -33,13 +34,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        return path.startsWith("/api/v1/auth")
-                || path.equals("/")
-                || path.equals("/error")
-                || path.startsWith("/swagger")
-                || path.startsWith("/v3/api-docs");
+        return path.startsWith("/api/v1/auth/signin") ||
+                path.startsWith("/api/v1/auth/signup") ||
+                path.startsWith("/api/v1/auth/refresh") ||
+                path.equals("/") ||
+                path.equals("/error") ||
+                path.startsWith("/swagger") ||
+                path.startsWith("/v3/api-docs");
     }
-
 
     @Override
     protected void doFilterInternal(
@@ -47,67 +49,45 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-
-        logger.debug("Processing JWT for path: {}", request.getRequestURI());
-
-        final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String userEmail;
-
-        if (!StringUtils.hasText(authHeader)) {
-            handleMissingAuthHeader(request, response);
-            return;
-        }
-
-        if (!authHeader.startsWith("Bearer ")) {
-            handleInvalidAuthHeader(request, response);
-            return;
-        }
-
-        if (authHeader.length() > 7) {
-            jwt = authHeader.substring(7);
-        } else {
-            handleInvalidAuthHeader(request, response);
-            return;
-        }
-        userEmail = jwtService.extractUsername(jwt);
-        logger.debug("JWT Token: {}", jwt);
-        logger.debug("UserEmail from token: {}", userEmail);
-
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            processAuthentication(request, response, filterChain, jwt, userEmail);
-        } else {
-            filterChain.doFilter(request, response);
-        }
-    }
-    private String getJwtFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7); // Get the token without "Bearer "
-        }
-        return null;
-    }
-
-    private void processAuthentication(HttpServletRequest request,
-                                       HttpServletResponse response,
-                                       FilterChain filterChain,
-                                       String jwt,
-                                       String userEmail) throws IOException, ServletException {
         try {
-            UserDetails userDetails = userService.loadUserByUsername(userEmail);
-            logger.debug("User authorities: {}", userDetails.getAuthorities());
+            final String authHeader = request.getHeader("Authorization");
 
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                setSecurityContext(request, userDetails);
-            } else {
-                handleInvalidToken(request, response);
+            if (!StringUtils.hasText(authHeader)) {
+                handleMissingAuthHeader(request, response);
                 return;
             }
+
+            if (!authHeader.startsWith("Bearer ")) {
+                handleInvalidAuthHeader(request, response);
+                return;
+            }
+
+            final String jwt = authHeader.substring(7).trim();
+            final String userEmail = jwtService.extractUsername(jwt);
+
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = userService.loadUserByUsername(userEmail);
+
+                if (jwtService.isTokenValid(jwt) && jwtService.isTokenValidForUser(jwt, userDetails)) {
+                    setSecurityContext(request, userDetails);
+                } else {
+                    handleInvalidToken(request, response);
+                    return;
+                }
+            }
+
+            filterChain.doFilter(request, response);
+
+        } catch (JwtException e) {
+            logger.error("JWT validation error: {}", e.getMessage());
+            handleInvalidToken(request, response);
         } catch (UsernameNotFoundException e) {
+            logger.error("User not found: {}", e.getMessage());
             handleUserNotFound(request, response, e);
-            return;
+        } catch (Exception e) {
+            logger.error("Authentication error: {}", e.getMessage());
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Authentication failed");
         }
-        filterChain.doFilter(request, response);
     }
 
     private void setSecurityContext(HttpServletRequest request, UserDetails userDetails) {
@@ -122,24 +102,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         SecurityContextHolder.setContext(context);
     }
 
-
     private void handleMissingAuthHeader(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        logger.warn("Missing Authorization header for path: {}", request.getRequestURI());
-        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing Authorization header");
+        logger.warn("Missing Authorization header for: {}", request.getRequestURI());
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authorization header required");
     }
 
     private void handleInvalidAuthHeader(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        logger.warn("Invalid Auth header format for path: {}", request.getRequestURI());
-        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid Authorization header format");
+        logger.warn("Invalid Authorization header format for: {}", request.getRequestURI());
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authorization header must start with 'Bearer '");
     }
 
     private void handleInvalidToken(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        logger.warn("Invalid JWT token for path: {}", request.getRequestURI());
-        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid JWT token");
+        logger.warn("Invalid JWT token for: {}", request.getRequestURI());
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
     }
 
     private void handleUserNotFound(HttpServletRequest request, HttpServletResponse response, UsernameNotFoundException e) throws IOException {
-        logger.error("User not found error: {}", e.getMessage());
-        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid credentials");
+        logger.error("User not found: {}", e.getMessage());
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Account not found");
     }
 }

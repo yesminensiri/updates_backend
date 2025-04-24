@@ -4,6 +4,7 @@ import com.example.internships.dao.entity.User;
 import com.example.internships.dao.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +16,16 @@ public class UserService implements UserDetailsService {
 
     @Autowired
     private UserRepository userRepository;
+    public UserDetails getAuthenticatedUserDetails() {
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if (userDetails != null) {
+            String username = userDetails.getUsername();
+            return userDetails;
+        } else {
+            throw new IllegalArgumentException("User details are null");
+        }
+    }
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
