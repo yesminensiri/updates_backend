@@ -1,6 +1,7 @@
 package com.example.internships.dao.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 public class Commentaire {
@@ -9,7 +10,7 @@ public class Commentaire {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String contenu;
+    private String content;
 
     @ManyToOne
     private User auteur; // L'utilisateur qui a écrit le commentaire
@@ -17,7 +18,9 @@ public class Commentaire {
     @ManyToOne
     private Offre offre; // L'offre à laquelle le commentaire est associé
 
-    // === Getters & Setters ===
+    private LocalDateTime createdAt;
+
+    // Getters et setters
 
     public Long getId() {
         return id;
@@ -27,12 +30,8 @@ public class Commentaire {
         this.id = id;
     }
 
-    public String getContenu() {
-        return contenu;
-    }
-
-    public void setContenu(String contenu) {
-        this.contenu = contenu;
+    public void setContent(String content) {
+        this.content = content;
     }
 
     public User getAuteur() {
@@ -50,4 +49,13 @@ public class Commentaire {
     public void setOffre(Offre offre) {
         this.offre = offre;
     }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
 }
